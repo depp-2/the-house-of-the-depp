@@ -26,6 +26,17 @@ CREATE TABLE projects (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 연구/실험
+CREATE TABLE researches (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  description TEXT,
+  category TEXT,
+  tech_stack TEXT[] DEFAULT '{}',
+  github_url TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- 조회수 추적
 CREATE TABLE page_views (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -36,6 +47,7 @@ CREATE TABLE page_views (
 -- RLS (Row Level Security) 정책
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE researches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE page_views ENABLE ROW LEVEL SECURITY;
 
 -- 공개 읽기 권한 (모든 사용자)
@@ -43,6 +55,9 @@ CREATE POLICY "Anyone can read published posts" ON posts
   FOR SELECT USING (published_at IS NOT NULL);
 
 CREATE POLICY "Anyone can read projects" ON projects
+  FOR SELECT USING (true);
+
+CREATE POLICY "Anyone can read researches" ON researches
   FOR SELECT USING (true);
 
 -- 조회수 기록 (모든 사용자)
@@ -56,6 +71,7 @@ CREATE POLICY "Anyone can insert page views" ON page_views
 CREATE INDEX idx_posts_published_at ON posts(published_at DESC);
 CREATE INDEX idx_posts_slug ON posts(slug);
 CREATE INDEX idx_projects_featured ON projects(featured);
+CREATE INDEX idx_researches_created_at ON researches(created_at DESC);
 CREATE INDEX idx_page_views_path ON page_views(path);
 CREATE INDEX idx_page_views_created_at ON page_views(created_at DESC);
 
