@@ -1,13 +1,16 @@
 {
   "name": "the-house-of-the-depp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "analyze": "next experimental-analyze"
+    "analyze": "next experimental-analyze",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.95.0",
@@ -20,12 +23,19 @@
   "devDependencies": {
     "@next/bundle-analyzer": "^16.1.6",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/react": "^16.0.0",
+    "@testing-library/jest-dom": "^6.5.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^5.0.0",
+    "@vitest/coverage-v8": "^2.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "happy-dom": "^15.0.0",
+    "jsdom": "^25.0.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^2.0.0"
   }
 }
