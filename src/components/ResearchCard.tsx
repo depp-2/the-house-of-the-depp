@@ -10,7 +10,9 @@ export default function ResearchCard({ research }: ResearchCardProps) {
       <div className="flex items-baseline justify-between gap-2">
         <h3 className="font-medium text-foreground">{research.title}</h3>
         {research.category && (
-          <span className="shrink-0 text-xs text-accent">{research.category}</span>
+          <span className="shrink-0 rounded bg-muted px-2 py-0.5 text-xs text-accent">
+            {research.category}
+          </span>
         )}
       </div>
 
@@ -21,7 +23,12 @@ export default function ResearchCard({ research }: ResearchCardProps) {
       {research.tech_stack.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-1.5">
           {research.tech_stack.map((tech) => (
-            <span key={tech} className="text-xs text-muted">{tech}</span>
+            <span
+              key={tech}
+              className="rounded bg-muted px-2 py-0.5 text-xs text-muted"
+            >
+              {tech}
+            </span>
           ))}
         </div>
       )}
