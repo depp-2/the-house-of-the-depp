@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { BlogPostSchema } from '@/components/StructuredData';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -33,6 +34,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: post.title,
     description,
+    keywords: [
+      '기술 블로그',
+      'Agentic Engineer',
+      'AI',
+      '개발',
+      ...extractKeywords(post.content),
+    ].join(', '),
+    alternates: {
+      canonical: `${baseUrl}/blog/${slug}`,
+    },
     openGraph: {
       title: post.title,
       description,
@@ -58,6 +69,29 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
+/**
+ * Extract keywords from content
+ */
+function extractKeywords(content: string): string[] {
+  const words = content
+    .toLowerCase()
+    .replace(/[^\w\s가-힣]/g, ' ')
+    .split(/\s+/)
+    .filter(word => word.length > 2);
+
+  const wordCount = new Map<string, number>();
+  words.forEach(word => {
+    wordCount.set(word, (wordCount.get(word) || 0) + 1);
+  });
+
+  const sortedWords = Array.from(wordCount.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([word]) => word);
+
+  return sortedWords;
+}
+
 export default async function BlogPostPage({ params }: Props) {
   const { slug } = await params;
   const post = await getPost(slug);
@@ -74,8 +108,22 @@ export default async function BlogPostPage({ params }: Props) {
       })
     : null;
 
+  const baseUrl = 'https://the-house-of-the-depp.vercel.app';
+  const ogImageUrl = `${baseUrl}/api/og?title=${encodeURIComponent(post.title)}`;
+  const description = post.excerpt || post.content.slice(0, 160);
+
   return (
     <article className="mx-auto max-w-3xl px-6 py-16">
+      <BlogPostSchema
+        title={post.title}
+        description={description}
+        datePublished={post.published_at || undefined}
+        dateModified={post.published_at || undefined}
+        url={`${baseUrl}/blog/${slug}`}
+        imageUrl={ogImageUrl}
+        authorName="depp"
+      />
+
       <Link href="/blog" className="text-sm text-muted hover:text-accent">
         &larr; Blog
       </Link>

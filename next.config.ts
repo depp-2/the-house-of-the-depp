@@ -14,9 +14,6 @@ const nextConfig: NextConfig = {
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
 
-  // Performance: Enable SWC minification
-  swcMinify: true,
-
   // Performance: Enable compression
   compress: true,
 
