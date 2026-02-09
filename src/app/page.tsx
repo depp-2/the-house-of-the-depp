@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import PostCard from '@/components/PostCard';
 import ProjectCard from '@/components/ProjectCard';
+import { ArrowRight } from 'lucide-react';
 
 async function getLatestPosts() {
   const { data } = await supabase
@@ -31,19 +32,46 @@ export default async function HomePage() {
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-16">
-      <section className="py-12">
-        <h1 className="text-2xl font-bold">Agentic Engineer</h1>
-        <p className="mt-3 text-muted">
-          AI와 소프트웨어 개발의 교차점에서 에이전트 기반 시스템을 탐구합니다.
-        </p>
+      {/* Hero Section */}
+      <section className="py-12 md:py-16">
+        <div className="space-y-6">
+          <h1 className="bg-gradient-to-r from-foreground to-muted bg-clip-text text-3xl font-bold text-transparent md:text-4xl">
+            Agentic Engineer
+          </h1>
+          <p className="text-lg text-muted md:text-xl">
+            AI와 소프트웨어 개발의 교차점에서 에이전트 기반 시스템을
+            탐구합니다.
+          </p>
+          <div className="flex gap-4 pt-4">
+            <Link
+              href="/blog"
+              className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-accent/90"
+            >
+              블로그 보기
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link
+              href="/portfolio"
+              className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-accent/5 hover:text-foreground"
+            >
+              포트폴리오
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
       </section>
 
+      {/* Recent Posts Section */}
       {posts.length > 0 && (
         <section className="py-8">
-          <div className="mb-4 flex items-baseline justify-between">
-            <h2 className="text-lg font-bold">Recent Posts</h2>
-            <Link href="/blog" className="text-sm text-muted hover:text-accent">
-              all posts
+          <div className="mb-6 flex items-baseline justify-between border-b border-border pb-4">
+            <h2 className="text-xl font-bold">최근 포스트</h2>
+            <Link
+              href="/blog"
+              className="inline-flex items-center gap-1 text-sm text-muted transition-colors hover:text-accent"
+            >
+              모든 포스트
+              <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
           <div className="divide-y divide-border">
@@ -54,15 +82,20 @@ export default async function HomePage() {
         </section>
       )}
 
+      {/* Featured Projects Section */}
       {projects.length > 0 && (
         <section className="py-8">
-          <div className="mb-4 flex items-baseline justify-between">
-            <h2 className="text-lg font-bold">Projects</h2>
-            <Link href="/portfolio" className="text-sm text-muted hover:text-accent">
-              all projects
+          <div className="mb-6 flex items-baseline justify-between border-b border-border pb-4">
+            <h2 className="text-xl font-bold">추천 프로젝트</h2>
+            <Link
+              href="/portfolio"
+              className="inline-flex items-center gap-1 text-sm text-muted transition-colors hover:text-accent"
+            >
+              모든 프로젝트
+              <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {projects.map((project) => (
               <ProjectCard key={project.id} project={project} />
             ))}
@@ -70,9 +103,21 @@ export default async function HomePage() {
         </section>
       )}
 
+      {/* Empty State */}
       {posts.length === 0 && projects.length === 0 && (
-        <section className="py-8 text-sm text-muted">
-          <p>Supabase를 연결하고 <Link href="/admin" className="text-accent">Admin</Link>에서 글을 작성해보세요.</p>
+        <section className="py-12 text-center">
+          <div className="mx-auto max-w-md space-y-4">
+            <p className="text-lg text-muted">
+              아직 포스트나 프로젝트가 없습니다.
+            </p>
+            <Link
+              href="/admin"
+              className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-accent/90"
+            >
+              첫 포스트 작성하기
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
         </section>
       )}
     </div>
