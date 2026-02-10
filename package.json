@@ -10,7 +10,13 @@
     "analyze": "next experimental-analyze",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage"
+    "test:coverage": "vitest --coverage",
+    "post:new": "node scripts/new-post.js",
+    "post:insert": "node scripts/insert-post.js",
+    "db:backup": "node scripts/backup-db.js",
+    "cache:clean": "./scripts/clean-cache.sh",
+    "bundle:check": "node scripts/check-bundle-size.js",
+    "dev:helper": "./scripts/dev-helper.sh"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.95.0",
