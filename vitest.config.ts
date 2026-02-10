@@ -9,9 +9,8 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],
     css: {
-      include: ['**/*.css'],
       modules: {
-        cssStrategy: 'inline',
+        classNameStrategy: 'non-scoped',
       },
     },
     coverage: {

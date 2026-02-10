@@ -15,25 +15,32 @@ export default function PostCard({ post }: PostCardProps) {
     : null;
 
   return (
-    <Link href={`/blog/${post.slug}`} className="group block py-4">
-      <div className="flex items-baseline justify-between gap-4">
-        <h2 className="font-medium text-foreground group-hover:text-accent transition-colors">
+    <Link href={`/blog/${post.slug}`} className="group block py-6 transition-colors hover:bg-accent/5">
+      <article>
+        <h3 className="text-lg font-semibold group-hover:text-accent transition-colors">
           {post.title}
-        </h2>
-        <div className="flex items-center gap-3 shrink-0">
-          {post.view_count > 0 && (
-            <span className="text-xs text-muted">👁 {post.view_count}</span>
-          )}
+        </h3>
+
+        {post.excerpt && (
+          <p className="mt-2 text-sm text-muted line-clamp-2">
+            {post.excerpt}
+          </p>
+        )}
+
+        <div className="mt-3 flex items-center gap-3 text-xs text-muted">
           {formattedDate && (
-            <time className="text-sm text-muted" dateTime={post.published_at!}>
+            <time dateTime={post.published_at!}>
               {formattedDate}
             </time>
           )}
+          {post.view_count > 0 && (
+            <>
+              <span>•</span>
+              <span>{post.view_count.toLocaleString()} views</span>
+            </>
+          )}
         </div>
-      </div>
-      {post.excerpt && (
-        <p className="mt-2 text-sm text-muted line-clamp-2">{post.excerpt}</p>
-      )}
+      </article>
     </Link>
   );
 }
