@@ -1,88 +1,226 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Post, PostInsert, Project, ProjectInsert, Research, ResearchInsert } from '@/types/database';
 
 type Tab = 'posts' | 'projects' | 'researches';
 
 const inputClass = 'w-full rounded border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none';
-const btnPrimary = 'rounded bg-accent px-4 py-2 text-sm font-medium text-background';
+const btnPrimary = 'rounded bg-accent px-4 py-2 text-sm font-medium text-background hover:bg-accent/90';
 const btnMuted = 'text-sm text-muted hover:text-foreground';
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [password, setPassword] = useState('');
   const [activeTab, setActiveTab] = useState<Tab>('posts');
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Form states
   const [editingPost, setEditingPost] = useState<Post | null>(null);
-  const [editingProject, setEditingProject] = useState<Project | null>(null);
-  const [researches, setResearches] = useState<Research[]>([]);
-  const [editingResearch, setEditingResearch] = useState<Research | null>(null);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [postForm, setPostForm] = useState<PostInsert>({ slug: '', title: '', content: '', excerpt: '', published_at: null });
 
-  const handleLogin = (e: React.FormEvent) => {
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [projectForm, setProjectForm] = useState<ProjectInsert>({ title: '', description: '', tech_stack: [], github_url: '', demo_url: '', image_url: '', featured: false });
+
+  const [editingResearch, setEditingResearch] = useState<Research | null>(null);
+  const [researches, setResearches] = useState<Research[]>([]);
+  const [researchForm, setResearchForm] = useState<ResearchInsert>({ title: '', description: '', tech_stack: [], github_url: '', category: '' });
+
+  // Fetch data when tab changes
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchData(activeTab);
+    }
+  }, [isAuthenticated, activeTab]);
+
+  // Fetch data on mount
+  const fetchData = async (tab: Tab) => {
+    setIsLoading(true);
+    try {
+      if (tab === 'posts') {
+        const { data } = await supabase
+          .from('posts')
+          .select('*')
+          .order('created_at', { ascending: false });
+        setPosts(data ?? []);
+      } else if (tab === 'projects') {
+        const { data } = await supabase
+          .from('projects')
+          .select('*')
+          .order('created_at', { ascending: false });
+        setProjects(data ?? []);
+      } else if (tab === 'researches') {
+        const { data } = await supabase
+          .from('researches')
+          .select('*')
+          .order('created_at', { ascending: false });
+        setResearches(data ?? []);
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleLogin = (e: FormEvent) => {
     e.preventDefault();
-    if (password === process.env.NEXT_PUBLIC_ADMIN_PASSWORD || password === 'admin') {
+    const password = e.currentTarget.password?.value || '';
+    if (password === process.env.NEXT_PUBLIC_ADMIN_PASSWORD) {
       setIsAuthenticated(true);
       localStorage.setItem('admin_auth', 'true');
+      fetchData(activeTab);
     } else {
       alert('Wrong password');
     }
   };
 
-  useEffect(() => {
-    if (localStorage.getItem('admin_auth') === 'true') setIsAuthenticated(true);
-  }, []);
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    localStorage.removeItem('admin_auth');
+  };
 
-  useEffect(() => {
-    if (isAuthenticated) fetchData();
-  }, [isAuthenticated, activeTab]);
+  // Post handlers
+  const resetPostForm = () => {
+    setPostForm({ slug: '', title: '', content: '', excerpt: '', published_at: null });
+    setEditingPost(null);
+  };
 
-  const fetchData = async () => {
-    setIsLoading(true);
-    if (activeTab === 'posts') {
-      const { data } = await supabase.from('posts').select('*').order('created_at', { ascending: false });
-      setPosts(data ?? []);
-    } else if (activeTab === 'projects') {
-      const { data } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
-      setProjects(data ?? []);
+  const handlePostSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    
+    const payload: PostInsert = {
+      slug: postForm.slug || `post-${Date.now()}`,
+      title: postForm.title,
+      content: postForm.content,
+      excerpt: postForm.excerpt,
+      published_at: postForm.published_at,
+    };
+
+    if (editingPost) {
+      await supabase.from('posts').update(payload).eq('id', editingPost.id);
     } else {
-      const { data } = await supabase.from('researches').select('*').order('created_at', { ascending: false });
-      setResearches(data ?? []);
+      await supabase.from('posts').insert(payload);
     }
-    setIsLoading(false);
+
+    resetPostForm();
+    fetchData('posts');
+  };
+
+  const handleDeletePost = async (id: string) => {
+    if (confirm('Delete this post?')) {
+      await supabase.from('posts').delete().eq('id', id);
+      fetchData('posts');
+    }
+  };
+
+  // Project handlers
+  const resetProjectForm = () => {
+    setProjectForm({ title: '', description: '', tech_stack: [], github_url: '', demo_url: '', image_url: '', featured: false });
+    setEditingProject(null);
+  };
+
+  const handleProjectSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    
+    const payload: ProjectInsert = {
+      title: projectForm.title,
+      description: projectForm.description,
+      tech_stack: projectForm.tech_stack,
+      github_url: projectForm.github_url,
+      demo_url: projectForm.demo_url,
+      image_url: projectForm.image_url,
+      featured: projectForm.featured,
+    };
+
+    if (editingProject) {
+      await supabase.from('projects').update(payload).eq('id', editingProject.id);
+    } else {
+      await supabase.from('projects').insert(payload);
+    }
+
+    resetProjectForm();
+    fetchData('projects');
+  };
+
+  const handleDeleteProject = async (id: string) => {
+    if (confirm('Delete this project?')) {
+      await supabase.from('projects').delete().eq('id', id);
+      fetchData('projects');
+    }
+  };
+
+  // Research handlers
+  const resetResearchForm = () => {
+    setResearchForm({ title: '', description: '', tech_stack: [], github_url: '', category: '' });
+    setEditingResearch(null);
+  };
+
+  const handleResearchSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    
+    const payload: ResearchInsert = {
+      title: researchForm.title,
+      description: researchForm.description,
+      tech_stack: researchForm.tech_stack,
+      github_url: researchForm.github_url,
+      category: researchForm.category,
+    };
+
+    if (editingResearch) {
+      await supabase.from('researches').update(payload).eq('id', editingResearch.id);
+    } else {
+      await supabase.from('researches').insert(payload);
+    }
+
+    resetResearchForm();
+    fetchData('researches');
+  };
+
+  const handleDeleteResearch = async (id: string) => {
+    if (confirm('Delete this research?')) {
+      await supabase.from('researches').delete().eq('id', id);
+      fetchData('researches');
+    }
   };
 
   if (!isAuthenticated) {
     return (
       <div className="mx-auto max-w-sm px-6 py-32">
-        <h1 className="mb-6 text-lg font-bold">Admin</h1>
+        <h1 className="text-2xl font-bold mb-6">Admin</h1>
         <form onSubmit={handleLogin} className="space-y-3">
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" className={inputClass} />
-          <button type="submit" className={btnPrimary + ' w-full'}>Login</button>
+          <input
+            type="password"
+            placeholder="Password"
+            className={inputClass}
+          />
+          <button type="submit" className={btnPrimary}>
+            Login
+          </button>
         </form>
-        <p className="mt-3 text-xs text-muted">Demo: &quot;admin&quot;</p>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-16">
+    <div className="mx-auto max-w-6xl px-6 py-16">
       <div className="mb-8 flex items-center justify-between">
-        <h1 className="text-lg font-bold">Admin</h1>
-        <button onClick={() => { localStorage.removeItem('admin_auth'); setIsAuthenticated(false); }} className={btnMuted}>
+        <h1 className="text-2xl font-bold">Admin</h1>
+        <button onClick={handleLogout} className={btnMuted}>
           Logout
         </button>
       </div>
 
-      <div className="mb-6 flex gap-4 border-b border-border">
+      <div className="mb-6 flex gap-4 border-b border-border pb-4">
         {(['posts', 'projects', 'researches'] as Tab[]).map((tab) => (
           <button
             key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`pb-2 text-sm font-medium capitalize ${activeTab === tab ? 'border-b border-accent text-accent' : 'text-muted'}`}
+            onClick={() => { setActiveTab(tab); }}
+            className={`px-4 py-2 text-sm font-medium capitalize transition-colors ${
+              activeTab === tab ? 'border-b border-accent text-accent' : 'text-muted hover:text-foreground'
+            }`}
           >
             {tab}
           </button>
@@ -90,249 +228,562 @@ export default function AdminPage() {
       </div>
 
       {activeTab === 'posts' && (
-        <PostsManager posts={posts} isLoading={isLoading} onRefresh={fetchData} editingPost={editingPost} setEditingPost={setEditingPost} />
+        <div>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-bold">Posts</h2>
+            <button
+              onClick={resetPostForm}
+              className={btnPrimary}
+            >
+              New Post
+            </button>
+          </div>
+
+          {editingPost && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-8">
+              <form onSubmit={handlePostSubmit} className="space-y-3 max-w-md w-full rounded border border-border p-6 bg-card">
+                <h3 className="text-lg font-bold mb-4">
+                  {editingPost ? 'Edit Post' : 'New Post'}
+                </h3>
+
+                <div className="space-y-2">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Slug</label>
+                    <input
+                      type="text"
+                      defaultValue={editingPost.slug}
+                      disabled
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Title</label>
+                    <input
+                      type="text"
+                      defaultValue={editingPost.title}
+                      disabled
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Excerpt</label>
+                    <textarea
+                      defaultValue={editingPost.excerpt || ''}
+                      disabled
+                      rows={3}
+                      className={inputClass}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button type="button" onClick={resetPostForm} className={btnMuted}>
+                    Cancel
+                  </button>
+                  <button type="submit" className={btnPrimary}>
+                    Save
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {!editingPost && (
+            <form onSubmit={handlePostSubmit} className="space-y-3 max-w-md w-full rounded border border-border p-6 bg-card">
+              <h3 className="text-lg font-bold mb-4">New Post</h3>
+
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Slug</label>
+                  <input
+                    type="text"
+                    value={postForm.slug}
+                    onChange={(e) => setPostForm({ ...postForm, slug: e.target.value })}
+                    className={inputClass}
+                    required
+                  />
+                </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Title</label>
+                    <input
+                      type="text"
+                      value={postForm.title}
+                      onChange={(e) => setPostForm({ ...postForm, title: e.target.value })}
+                      className={inputClass}
+                      required
+                  />
+                </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Excerpt</label>
+                    <textarea
+                      value={postForm.excerpt || ''}
+                      onChange={(e) => setPostForm({ ...postForm, excerpt: e.target.value })}
+                      rows={3}
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Published At</label>
+                    <input
+                      type="datetime-local"
+                      value={postForm.published_at || ''}
+                      onChange={(e) => setPostForm({ ...postForm, published_at: e.target.value ? e.target.value : null })}
+                      className={inputClass}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button type="button" onClick={resetPostForm} className={btnMuted}>
+                    Cancel
+                  </button>
+                  <button type="submit" className={btnPrimary}>
+                    Create
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+
+          {isLoading ? <p className="text-center text-muted">Loading...</p> : (
+            <div className="divide-y divide-border">
+              {posts.map((post) => (
+                <div key={post.id} className="flex items-center justify-between py-3 border-b border-border last:border-0">
+                  <div>
+                    <span className="font-medium">{post.title}</span>
+                    <span className="ml-2 text-xs text-muted">/{post.slug}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-muted">
+                      {post.published_at ? `Published` : 'Draft'}
+                    </span>
+                    <button onClick={() => setEditingPost(post)} className="text-sm text-muted hover:text-accent">
+                      Edit
+                    </button>
+                    <button onClick={() => handleDeletePost(post.id)} className="text-sm text-red-500 hover:text-red-400">
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
+
       {activeTab === 'projects' && (
-        <ProjectsManager projects={projects} isLoading={isLoading} onRefresh={fetchData} editingProject={editingProject} setEditingProject={setEditingProject} />
+        <div>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-bold">Projects</h2>
+            <button
+              onClick={resetProjectForm}
+              className={btnPrimary}
+            >
+              New Project
+            </button>
+          </div>
+
+          {editingProject && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-8">
+              <form onSubmit={handleProjectSubmit} className="space-y-3 max-w-md w-full rounded border border-border p-6 bg-card">
+                <h3 className="text-lg font-bold mb-4">
+                  {editingProject ? 'Edit Project' : 'New Project'}
+                </h3>
+
+                <div className="space-y-2">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Title</label>
+                    <input
+                      type="text"
+                      defaultValue={editingProject.title}
+                      disabled
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Description</label>
+                    <textarea
+                      defaultValue={editingProject.description || ''}
+                      disabled
+                      rows={3}
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Tech Stack</label>
+                    <input
+                      type="text"
+                      placeholder="React, TypeScript, etc."
+                      defaultValue={editingProject.tech_stack?.join(', ')}
+                      disabled
+                      className={inputClass}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">GitHub URL</label>
+                      <input
+                        type="url"
+                        defaultValue={editingProject.github_url || ''}
+                        disabled
+                        className={inputClass}
+                        placeholder="https://github.com/username/repo"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Demo URL</label>
+                      <input
+                        type="url"
+                        defaultValue={editingProject.demo_url || ''}
+                        disabled
+                        className={inputClass}
+                        placeholder="https://demo.example.com"
+                      />
+                    </div>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="flex items-center gap-2 text-sm font-medium mb-1">
+                      <input
+                        type="checkbox"
+                        defaultChecked={editingProject.featured}
+                        disabled
+                        className="h-4 w-4"
+                      />
+                      Featured
+                    </label>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button type="button" onClick={resetProjectForm} className={btnMuted}>
+                    Cancel
+                  </button>
+                  <button type="submit" className={btnPrimary}>
+                    Save
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+
+          {!editingProject && (
+            <form onSubmit={handleProjectSubmit} className="space-y-3 max-w-md w-full rounded border border-border p-6 bg-card">
+              <h3 className="text-lg font-bold mb-4">New Project</h3>
+
+              <div className="space-y-2">
+                <div>
+                    <label className="block text-sm font-medium mb-1">Title</label>
+                    <input
+                      type="text"
+                      value={projectForm.title}
+                      onChange={(e) => setProjectForm({ ...projectForm, title: e.target.value })}
+                      className={inputClass}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Description</label>
+                    <textarea
+                      value={projectForm.description || ''}
+                      onChange={(e) => setProjectForm({ ...projectForm, description: e.target.value })}
+                      rows={3}
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Tech Stack</label>
+                    <input
+                      type="text"
+                      placeholder="React, TypeScript, etc."
+                      value={projectForm.tech_stack}
+                      onChange={(e) => setProjectForm({ ...projectForm, tech_stack: e.target.value.split(',').map(t => t.trim()) })}
+                      className={inputClass}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">GitHub URL</label>
+                      <input
+                        type="url"
+                        value={projectForm.github_url}
+                        onChange={(e) => setProjectForm({ ...projectForm, github_url: e.target.value })}
+                        placeholder="https://github.com/username/repo"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Demo URL</label>
+                      <input
+                        type="url"
+                        value={projectForm.demo_url}
+                        onChange={(e) => setProjectForm({ ...projectForm, demo_url: e.target.value })}
+                        placeholder="https://demo.example.com"
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="flex items-center gap-2 text-sm font-medium mb-1">
+                      <input
+                        type="checkbox"
+                        checked={projectForm.featured}
+                        onChange={(e) => setProjectForm({ ...projectForm, featured: e.target.checked })}
+                        className="h-4 w-4"
+                      />
+                      Featured
+                    </label>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button type="button" onClick={resetProjectForm} className={btnMuted}>
+                    Cancel
+                  </button>
+                  <button type="submit" className={btnPrimary}>
+                    Create
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+
+          {isLoading ? <p className="text-center text-muted">Loading...</p> : (
+            <div className="divide-y divide-border">
+              {projects.map((project) => (
+                <div key={project.id} className="flex items-center justify-between py-3 border-b border-border last:border-0">
+                  <div>
+                    <span className="font-medium">{project.title}</span>
+                    {project.featured && (
+                      <span className="ml-2 text-xs text-accent">Featured</span>
+                    )}
+                  </div>
+                  <div className="text-xs text-muted">
+                    {project.tech_stack?.join(', ') || 'No tech stack'}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {project.github_url && (
+                      <a
+                        href={project.github_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-muted hover:text-accent"
+                      >
+                        GitHub
+                      </a>
+                    )}
+                    {project.demo_url && (
+                      <a
+                        href={project.demo_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-muted hover:text-accent"
+                      >
+                        Demo
+                      </a>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => setEditingProject(project)} className="text-sm text-muted hover:text-accent">
+                      Edit
+                    </button>
+                    <button onClick={() => handleDeleteProject(project.id)} className="text-sm text-red-500 hover:text-red-400">
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
+
       {activeTab === 'researches' && (
-        <ResearchesManager researches={researches} isLoading={isLoading} onRefresh={fetchData} editingResearch={editingResearch} setEditingResearch={setEditingResearch} />
-      )}
-    </div>
-  );
-}
+        <div>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-bold">Research</h2>
+            <button
+              onClick={resetResearchForm}
+              className={btnPrimary}
+            >
+              New Research
+            </button>
+          </div>
 
-function PostsManager({ posts, isLoading, onRefresh, editingPost, setEditingPost }: {
-  posts: Post[]; isLoading: boolean; onRefresh: () => void;
-  editingPost: Post | null; setEditingPost: (p: Post | null) => void;
-}) {
-  const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState<PostInsert>({ slug: '', title: '', content: '', excerpt: '', published_at: null });
+          {editingResearch && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-8">
+              <form onSubmit={handleResearchSubmit} className="space-y-3 max-w-md w-full rounded border border-border p-6 bg-card">
+                <h3 className="text-lg font-bold mb-4">
+                  {editingResearch ? 'Edit Research' : 'New Research'}
+                </h3>
 
-  useEffect(() => {
-    if (editingPost) { setFormData(editingPost); setShowForm(true); }
-  }, [editingPost]);
+                <div className="space-y-2">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Title</label>
+                    <input
+                      type="text"
+                      defaultValue={editingResearch.title}
+                      disabled
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Description</label>
+                    <textarea
+                      defaultValue={editingResearch.description || ''}
+                      disabled
+                      rows={3}
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Tech Stack</label>
+                    <input
+                      type="text"
+                      placeholder="React, TypeScript, etc."
+                      defaultValue={editingResearch.tech_stack?.join(', ')}
+                      disabled
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Category</label>
+                    <input
+                      type="text"
+                      placeholder="experiment, prototype, paper"
+                      defaultValue={editingResearch.category || ''}
+                      disabled
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">GitHub URL</label>
+                    <input
+                      type="url"
+                      defaultValue={editingResearch.github_url || ''}
+                      disabled
+                      className={inputClass}
+                      placeholder="https://github.com/username/repo"
+                    />
+                  </div>
+                </div>
 
-  const reset = () => { setShowForm(false); setEditingPost(null); setFormData({ slug: '', title: '', content: '', excerpt: '', published_at: null }); };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const payload = { slug: formData.slug, title: formData.title, content: formData.content, excerpt: formData.excerpt, published_at: formData.published_at };
-    if (editingPost) {
-      await supabase.from('posts').update(payload).eq('id', editingPost.id);
-    } else {
-      await supabase.from('posts').insert(payload);
-    }
-    reset(); onRefresh();
-  };
-
-  const handleDelete = async (id: string) => { if (confirm('Delete?')) { await supabase.from('posts').delete().eq('id', id); onRefresh(); } };
-  const handlePublish = async (post: Post) => {
-    await supabase.from('posts').update({ published_at: post.published_at ? null : new Date().toISOString() }).eq('id', post.id);
-    onRefresh();
-  };
-
-  return (
-    <div>
-      <button onClick={() => { showForm ? reset() : setShowForm(true); }} className={btnPrimary + ' mb-6'}>
-        {showForm ? 'Cancel' : 'New Post'}
-      </button>
-
-      {showForm && (
-        <form onSubmit={handleSubmit} className="mb-8 space-y-3 rounded border border-border p-4">
-          <input type="text" value={formData.slug} onChange={(e) => setFormData({ ...formData, slug: e.target.value })} placeholder="slug" className={inputClass} required />
-          <input type="text" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} placeholder="Title" className={inputClass} required />
-          <input type="text" value={formData.excerpt ?? ''} onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })} placeholder="Excerpt" className={inputClass} />
-          <textarea value={formData.content} onChange={(e) => setFormData({ ...formData, content: e.target.value })} placeholder="Content" rows={8} className={inputClass} required />
-          <button type="submit" className={btnPrimary}>{editingPost ? 'Update' : 'Create'}</button>
-        </form>
-      )}
-
-      {isLoading ? <p className="text-sm text-muted">Loading...</p> : (
-        <div className="divide-y divide-border">
-          {posts.map((post) => (
-            <div key={post.id} className="flex items-center justify-between py-3">
-              <div>
-                <span className="text-sm font-medium">{post.title}</span>
-                <span className="ml-2 text-xs text-muted">/{post.slug}</span>
-              </div>
-              <div className="flex items-center gap-3 text-sm">
-                <span className={post.published_at ? 'text-accent' : 'text-muted'}>{post.published_at ? 'Live' : 'Draft'}</span>
-                <button onClick={() => handlePublish(post)} className={btnMuted}>{post.published_at ? 'Unpublish' : 'Publish'}</button>
-                <button onClick={() => setEditingPost(post)} className={btnMuted}>Edit</button>
-                <button onClick={() => handleDelete(post.id)} className="text-sm text-red-500">Del</button>
-              </div>
+                <div className="flex gap-3 pt-4">
+                  <button type="button" onClick={resetResearchForm} className={btnMuted}>
+                    Cancel
+                  </button>
+                  <button type="submit" className={btnPrimary}>
+                    Save
+                  </button>
+                </div>
+              </form>
             </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+          )}
 
-function ProjectsManager({ projects, isLoading, onRefresh, editingProject, setEditingProject }: {
-  projects: Project[]; isLoading: boolean; onRefresh: () => void;
-  editingProject: Project | null; setEditingProject: (p: Project | null) => void;
-}) {
-  const [showForm, setShowForm] = useState(false);
-  const emptyForm: ProjectInsert = { title: '', description: '', tech_stack: [], github_url: '', demo_url: '', image_url: '', featured: false };
-  const [formData, setFormData] = useState<ProjectInsert>(emptyForm);
-  const [techInput, setTechInput] = useState('');
+          {!editingResearch && (
+            <form onSubmit={handleResearchSubmit} className="space-y-3 max-w-md w-full rounded border border-border p-6 bg-card">
+              <h3 className="text-lg font-bold mb-4">New Research</h3>
 
-  useEffect(() => { if (editingProject) { setFormData(editingProject); setShowForm(true); } }, [editingProject]);
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Title</label>
+                    <input
+                    type="text"
+                      value={researchForm.title}
+                      onChange={(e) => setResearchForm({ ...researchForm, title: e.target.value })}
+                      className={inputClass}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Description</label>
+                    <textarea
+                      value={researchForm.description || ''}
+                      onChange={(e) => setResearchForm({ ...researchForm, description: e.target.value })}
+                      rows={3}
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Tech Stack</label>
+                    <input
+                      type="text"
+                      placeholder="React, TypeScript, etc."
+                      value={researchForm.tech_stack}
+                      onChange={(e) => setResearchForm({ ...researchForm, tech_stack: e.target.value.split(',').map(t => t.trim()) })}
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Category</label>
+                    <input
+                      type="text"
+                      placeholder="experiment, prototype, paper"
+                      value={researchForm.category}
+                      onChange={(e) => setResearchForm({ ...researchForm, category: e.target.value })}
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">GitHub URL</label>
+                    <input
+                      type="url"
+                      value={researchForm.github_url}
+                      onChange={(e) => setResearchForm({ ...researchForm, github_url: e.target.value })}
+                      placeholder="https://github.com/username/repo"
+                      className={inputClass}
+                    />
+                  </div>
+                </div>
 
-  const reset = () => { setShowForm(false); setEditingProject(null); setFormData(emptyForm); };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const payload = { title: formData.title, description: formData.description, tech_stack: formData.tech_stack, github_url: formData.github_url, demo_url: formData.demo_url, image_url: formData.image_url, featured: formData.featured };
-    if (editingProject) {
-      await supabase.from('projects').update(payload).eq('id', editingProject.id);
-    } else {
-      await supabase.from('projects').insert(payload);
-    }
-    reset(); onRefresh();
-  };
-
-  const handleDelete = async (id: string) => { if (confirm('Delete?')) { await supabase.from('projects').delete().eq('id', id); onRefresh(); } };
-
-  const addTech = () => { if (techInput.trim()) { setFormData({ ...formData, tech_stack: [...(formData.tech_stack || []), techInput.trim()] }); setTechInput(''); } };
-  const removeTech = (i: number) => { setFormData({ ...formData, tech_stack: formData.tech_stack?.filter((_, idx) => idx !== i) }); };
-
-  return (
-    <div>
-      <button onClick={() => { showForm ? reset() : setShowForm(true); }} className={btnPrimary + ' mb-6'}>
-        {showForm ? 'Cancel' : 'New Project'}
-      </button>
-
-      {showForm && (
-        <form onSubmit={handleSubmit} className="mb-8 space-y-3 rounded border border-border p-4">
-          <input type="text" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} placeholder="Title" className={inputClass} required />
-          <textarea value={formData.description ?? ''} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="Description" rows={3} className={inputClass} />
-          <div>
-            <div className="flex gap-2">
-              <input type="text" value={techInput} onChange={(e) => setTechInput(e.target.value)} placeholder="Add tech" className={inputClass} />
-              <button type="button" onClick={addTech} className="shrink-0 rounded border border-border px-3 py-2 text-sm text-muted">Add</button>
-            </div>
-            {formData.tech_stack && formData.tech_stack.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1">
-                {formData.tech_stack.map((tech, i) => (
-                  <span key={i} className="inline-flex items-center gap-1 text-xs text-muted">
-                    {tech}<button type="button" onClick={() => removeTech(i)} className="hover:text-foreground">x</button>
-                  </span>
-                ))}
-              </div>
+                <div className="flex gap-3 pt-4">
+                  <button type="button" onClick={resetResearchForm} className={btnMuted}>
+                    Cancel
+                  </button>
+                  <button type="submit" className={btnPrimary}>
+                    Create
+                  </button>
+                </div>
+              </form>
             )}
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <input type="url" value={formData.github_url ?? ''} onChange={(e) => setFormData({ ...formData, github_url: e.target.value })} placeholder="GitHub URL" className={inputClass} />
-            <input type="url" value={formData.demo_url ?? ''} onChange={(e) => setFormData({ ...formData, demo_url: e.target.value })} placeholder="Demo URL" className={inputClass} />
-          </div>
-          <input type="url" value={formData.image_url ?? ''} onChange={(e) => setFormData({ ...formData, image_url: e.target.value })} placeholder="Image URL" className={inputClass} />
-          <label className="flex items-center gap-2 text-sm text-muted">
-            <input type="checkbox" checked={formData.featured ?? false} onChange={(e) => setFormData({ ...formData, featured: e.target.checked })} />
-            Featured
-          </label>
-          <button type="submit" className={btnPrimary}>{editingProject ? 'Update' : 'Create'}</button>
-        </form>
-      )}
 
-      {isLoading ? <p className="text-sm text-muted">Loading...</p> : (
-        <div className="divide-y divide-border">
-          {projects.map((project) => (
-            <div key={project.id} className="flex items-center justify-between py-3">
-              <div>
-                <span className="text-sm font-medium">{project.title}</span>
-                {project.featured && <span className="ml-2 text-xs text-accent">featured</span>}
-                <span className="ml-2 text-xs text-muted">{project.tech_stack?.join(', ')}</span>
-              </div>
-              <div className="flex items-center gap-3 text-sm">
-                <button onClick={() => setEditingProject(project)} className={btnMuted}>Edit</button>
-                <button onClick={() => handleDelete(project.id)} className="text-sm text-red-500">Del</button>
-              </div>
+          {isLoading ? <p className="text-center text-muted">Loading...</p> : (
+            <div className="divide-y divide-border">
+              {researches.map((r) => (
+                <div key={r.id} className="flex items-center justify-between py-3 border-b border-border last:border-0">
+                  <div>
+                    <span className="font-medium">{r.title}</span>
+                    {r.category && (
+                      <span className="ml-2 text-xs text-accent">{r.category}</span>
+                    )}
+                  </div>
+                  <div className="text-xs text-muted">
+                    {r.tech_stack?.join(', ') || 'No tech stack'}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {r.github_url && (
+                      <a
+                        href={r.github_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-muted hover:text-accent"
+                      >
+                        GitHub
+                      </a>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button onClick={() => setEditingResearch(r)} className="text-sm text-muted hover:text-accent">
+                      Edit
+                    </button>
+                    <button onClick={() => handleDeleteResearch(r.id)} className="text-sm text-red-500 hover:text-red-400">
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ResearchesManager({ researches, isLoading, onRefresh, editingResearch, setEditingResearch }: {
-  researches: Research[]; isLoading: boolean; onRefresh: () => void;
-  editingResearch: Research | null; setEditingResearch: (r: Research | null) => void;
-}) {
-  const [showForm, setShowForm] = useState(false);
-  const emptyForm: ResearchInsert = { title: '', description: '', tech_stack: [], github_url: '', category: '' };
-  const [formData, setFormData] = useState<ResearchInsert>(emptyForm);
-  const [techInput, setTechInput] = useState('');
-
-  useEffect(() => { if (editingResearch) { setFormData(editingResearch); setShowForm(true); } }, [editingResearch]);
-
-  const reset = () => { setShowForm(false); setEditingResearch(null); setFormData(emptyForm); };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const payload = { title: formData.title, description: formData.description, tech_stack: formData.tech_stack, github_url: formData.github_url, category: formData.category };
-    if (editingResearch) {
-      await supabase.from('researches').update(payload).eq('id', editingResearch.id);
-    } else {
-      await supabase.from('researches').insert(payload);
-    }
-    reset(); onRefresh();
-  };
-
-  const handleDelete = async (id: string) => { if (confirm('Delete?')) { await supabase.from('researches').delete().eq('id', id); onRefresh(); } };
-
-  const addTech = () => { if (techInput.trim()) { setFormData({ ...formData, tech_stack: [...(formData.tech_stack || []), techInput.trim()] }); setTechInput(''); } };
-  const removeTech = (i: number) => { setFormData({ ...formData, tech_stack: formData.tech_stack?.filter((_, idx) => idx !== i) }); };
-
-  return (
-    <div>
-      <button onClick={() => { showForm ? reset() : setShowForm(true); }} className={btnPrimary + ' mb-6'}>
-        {showForm ? 'Cancel' : 'New Research'}
-      </button>
-
-      {showForm && (
-        <form onSubmit={handleSubmit} className="mb-8 space-y-3 rounded border border-border p-4">
-          <input type="text" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} placeholder="Title" className={inputClass} required />
-          <textarea value={formData.description ?? ''} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="Description" rows={3} className={inputClass} />
-          <input type="text" value={formData.category ?? ''} onChange={(e) => setFormData({ ...formData, category: e.target.value })} placeholder="Category (e.g. experiment, prototype)" className={inputClass} />
-          <div>
-            <div className="flex gap-2">
-              <input type="text" value={techInput} onChange={(e) => setTechInput(e.target.value)} placeholder="Add tech" className={inputClass} />
-              <button type="button" onClick={addTech} className="shrink-0 rounded border border-border px-3 py-2 text-sm text-muted">Add</button>
-            </div>
-            {formData.tech_stack && formData.tech_stack.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1">
-                {formData.tech_stack.map((tech, i) => (
-                  <span key={i} className="inline-flex items-center gap-1 text-xs text-muted">
-                    {tech}<button type="button" onClick={() => removeTech(i)} className="hover:text-foreground">x</button>
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-          <input type="url" value={formData.github_url ?? ''} onChange={(e) => setFormData({ ...formData, github_url: e.target.value })} placeholder="GitHub URL" className={inputClass} />
-          <button type="submit" className={btnPrimary}>{editingResearch ? 'Update' : 'Create'}</button>
-        </form>
-      )}
-
-      {isLoading ? <p className="text-sm text-muted">Loading...</p> : (
-        <div className="divide-y divide-border">
-          {researches.map((r) => (
-            <div key={r.id} className="flex items-center justify-between py-3">
-              <div>
-                <span className="text-sm font-medium">{r.title}</span>
-                {r.category && <span className="ml-2 text-xs text-accent">{r.category}</span>}
-                <span className="ml-2 text-xs text-muted">{r.tech_stack?.join(', ')}</span>
-              </div>
-              <div className="flex items-center gap-3 text-sm">
-                <button onClick={() => setEditingResearch(r)} className={btnMuted}>Edit</button>
-                <button onClick={() => handleDelete(r.id)} className="text-sm text-red-500">Del</button>
-              </div>
-            </div>
-          ))}
+          )}
         </div>
       )}
     </div>
