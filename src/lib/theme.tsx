@@ -1,6 +1,7 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -12,11 +13,24 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+/**
+ * Theme Provider Component
+ *
+ * Manages theme state and persistence across the application.
+ * Supports light, dark, and system (auto) themes.
+ *
+ * @example
+ * ```tsx
+ * <ThemeProvider>
+ *   <App />
+ * </ThemeProvider>
+ * ```
+ */
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>('system');
   const [actualTheme, setActualTheme] = useState<'light' | 'dark'>('light');
 
-  // Load theme from localStorage
+  // Load theme from localStorage on mount
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') as Theme | null;
     if (savedTheme) {
@@ -24,10 +38,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Apply theme to document
+  // Apply theme to document whenever theme state changes
   useEffect(() => {
     const root = window.document.documentElement;
 
+    /**
+     * Applies the appropriate theme class to the document element.
+     * Resolves 'system' theme based on user's OS preference.
+     */
     const applyTheme = () => {
       let resolvedTheme: 'light' | 'dark';
 
@@ -50,7 +68,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
     applyTheme();
 
-    // Listen for system theme changes
+    // Listen for system theme preference changes when in system mode
     if (theme === 'system') {
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
       const handleChange = () => applyTheme();
@@ -59,6 +77,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }, [theme]);
 
+  /**
+   * Sets the new theme and persists it to localStorage.
+   *
+   * @param newTheme - The theme to set ('light' | 'dark' | 'system')
+   */
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
     localStorage.setItem('theme', newTheme);
@@ -71,7 +94,21 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useTheme() {
+/**
+ * Hook to access theme context.
+ *
+ * @throws {Error} If used outside of ThemeProvider
+ * @returns Theme context object with theme, setTheme, and actualTheme
+ *
+ * @example
+ * ```tsx
+ * function MyComponent() {
+ *   const { theme, setTheme, actualTheme } = useTheme();
+ *   return <button onClick={() => setTheme('dark')}>Toggle Dark Mode</button>;
+ * }
+ * ```
+ */
+export function useTheme(): ThemeContextType {
   const context = useContext(ThemeContext);
   if (context === undefined) {
     throw new Error('useTheme must be used within a ThemeProvider');
