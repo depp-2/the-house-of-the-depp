@@ -283,6 +283,31 @@ npm run start      # Start production server
 npm run lint       # Run ESLint
 ```
 
+### Content Management
+```bash
+npm run post:new    # Create new post from template
+npm run post:insert # Insert markdown post into database
+```
+
+### Database
+```bash
+npm run db:backup  # Backup database to JSON files
+```
+
+### Build & Cache
+```bash
+npm run cache:clean      # Clean Next.js cache
+npm run bundle:check    # Check bundle sizes
+npm run dev:helper     # Run dev helper commands
+```
+
+### Testing
+```bash
+npm test             # Run Vitest
+npm run test:ui       # Run tests with UI
+npm run test:coverage # Run tests with coverage
+```
+
 ### Analysis
 ```bash
 npm run analyze    # Analyze bundle (requires ANALYZE=true)
